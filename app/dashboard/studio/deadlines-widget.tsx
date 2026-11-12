@@ -4,6 +4,7 @@
 // Reads the dispute rows from Studio's `context`, not widgetApi.getData, so Studio filters don't narrow it.
 // TODO: move to widgetApi.getData if cross-filtering is wanted.
 
+import Link from 'next/link';
 import type { AgBaseWidgetDefinition, AgDefaultRegistry, AgWidgetParams } from 'ag-studio';
 import type { DashboardData, Urgency } from '@/lib/dashboard-data';
 
@@ -47,7 +48,12 @@ function ResponseDeadlines({ context }: AgWidgetParams) {
         return (
           <div key={d.id} className="rounded-lg border border-pp-border bg-pp-surface p-3" style={{ borderLeft: `4px solid ${colour}` }}>
             <div className="flex flex-wrap items-baseline justify-between gap-2">
-              <span className="font-mono text-sm font-semibold text-pp-navy">{d.id}</span>
+              <Link
+                href={`/disputes/${encodeURIComponent(d.id)}`}
+                className="font-mono text-sm font-semibold text-pp-blue hover:underline"
+              >
+                {d.id} →
+              </Link>
               <span className="text-sm font-semibold" style={{ color: colour }}>
                 {daysLabel(d.daysToRespond!)}
               </span>
