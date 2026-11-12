@@ -510,7 +510,10 @@ class ResponseStreamTranslator {
                 outcome.error ??= new Error(input.response?.error?.message ?? `Response ${input.type}.`);
                 return [];
             case 'error':
-                outcome.error ??= new Error(`${input.code ?? 'api_error'}: ${input.message}`);
+                // OpenAI may nest code/message under `error`; read both shapes so the chat shows the real reason.
+                outcome.error ??= new Error(
+                    `${input.code ?? input.error?.code ?? 'api_error'}: ${input.message ?? input.error?.message ?? 'no detail from OpenAI'}`,
+                );
                 return [];
             default:
                 return [];
