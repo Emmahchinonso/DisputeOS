@@ -18,21 +18,19 @@ export type SavedReport = {
 
 export type StoredReports = { reports: SavedReport[]; activeId: string };
 
-const STORAGE_KEY = 'ag-paypal-demo:reports:v1';
+// New key: reports saved by the starter reference tables that no longer exist.
+const STORAGE_KEY = 'disputeos:reports:v1';
 
-export const BUILT_IN_ID = 'paypal-overview';
+export const BUILT_IN_ID = 'dispute-queue';
 
 // Sidebar titles for the built-in report's pages, keyed by page id in initial-report.ts.
 const defaultPageTitles: Record<string, string> = {
-  revenue: 'Revenue',
-  receivables: 'Receivables',
-  cash: 'Cash & payouts',
-  catalogue: 'Catalogue',
+  queue: 'Queue',
 };
 
 export const defaultReport = (): SavedReport => ({
   id: BUILT_IN_ID,
-  name: 'PayPal overview',
+  name: 'Dispute queue',
   builtIn: true,
   pageTitles: defaultPageTitles,
   state: dashboardReport,
