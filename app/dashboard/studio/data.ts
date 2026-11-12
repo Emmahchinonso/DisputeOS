@@ -24,7 +24,7 @@ export function buildStudioData(data: DashboardData): AgDataSourcesDefinition {
         data: data.disputes,
         fields: fields([
           ['id', 'Dispute ID', 'textFormat'],
-          ['source', 'Source', 'textFormat', true],
+          ['source', 'Source Mode', 'textFormat', true],
           ['reason', 'Reason', 'textFormat'],
           ['status', 'Status', 'textFormat'],
           ['stage', 'Stage', 'textFormat'],
@@ -34,6 +34,9 @@ export function buildStudioData(data: DashboardData): AgDataSourcesDefinition {
           ['createdAt', 'Opened', 'dateTimeFormat'],
           ['updatedAt', 'Updated', 'dateTimeFormat'],
           ['sellerResponseDueDate', 'Seller Deadline', 'dateTimeFormat'],
+          ['sellerDeadlineLabel', 'Deadline (UTC)', 'textFormat'],
+          ['sourceLabel', 'Source', 'textFormat'],
+          ['amountLabel', 'Amount', 'textFormat'],
           ['daysToRespond', 'Days to Respond', 'integerFormat'],
           ['urgency', 'Urgency', 'textFormat'],
           ['evidenceRequested', 'Evidence Requested', 'textFormat'],

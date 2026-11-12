@@ -20,15 +20,14 @@ const queue: AgPageState = {
       type: 'grid',
       dataMapping: {
         cols: [
+          // Deadline, days and source first so they fit at 1440px; long text columns last.
           { id: 'disputes.id' },
-          { id: 'disputes.reason' },
-          { id: 'disputes.stage' },
-          { id: 'disputes.status' },
-          { id: 'disputes.currency' },
-          { id: 'disputes.amount', aggregation: 'sum' },
-          { id: 'disputes.sellerResponseDueDate' },
+          { id: 'disputes.sellerDeadlineLabel' },
           { id: 'disputes.daysToRespond' },
-          { id: 'disputes.createdAt' },
+          { id: 'disputes.amountLabel' },
+          { id: 'disputes.sourceLabel' },
+          { id: 'disputes.status' },
+          { id: 'disputes.reason' },
         ],
       },
       sort: [{ field: { id: 'disputes.daysToRespond' }, direction: 'asc' }],

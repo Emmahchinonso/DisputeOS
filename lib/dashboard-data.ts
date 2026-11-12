@@ -18,6 +18,16 @@ const urgencyOf = (daysLeft: number | null): Urgency | null => {
   return '> 30 days';
 };
 
+const SOURCE_LABEL = { paypal_sandbox: 'PayPal sandbox', demo: 'Demo' } as const;
+
+// '2026-12-01T21:07:37Z' -> '1 Dec 2026, 21:07 UTC'
+const utcLabel = (iso: string) => {
+  const d = new Date(iso);
+  const date = d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' });
+  const time = d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: 'UTC' });
+  return `${date}, ${time} UTC`;
+};
+
 function disputeRow(d: Dispute, asOf: Date) {
   const due = d.sellerResponseDueDate;
   // Whole days left, rounded down so a deadline never looks further away than it is.
@@ -37,6 +47,11 @@ function disputeRow(d: Dispute, asOf: Date) {
     createdAt: d.createdAt,
     updatedAt: d.updatedAt,
     sellerResponseDueDate: due,
+    // Text so the grid can't render it in a viewer's locale or time zone (01/12 read as 12 Jan).
+    sellerDeadlineLabel: due ? utcLabel(due) : null,
+    sourceLabel: SOURCE_LABEL[d.sourceMode],
+    // 'USD 10.00' in one column; amount/currency stay separate for charts.
+    amountLabel: d.disputeAmount ? `${d.disputeAmount.currencyCode} ${d.disputeAmount.value}` : null,
     daysToRespond,
     urgency: urgencyOf(daysToRespond),
     evidenceRequested: d.evidenceRequested.join(', '),
