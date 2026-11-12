@@ -8,8 +8,22 @@ const DAY_MS = 86_400_000;
 // 'MERCHANDISE_OR_SERVICE_NOT_RECEIVED' -> 'Merchandise or service not received'
 const humanise = (code: string | null) => (code ? code[0] + code.slice(1).toLowerCase().replaceAll('_', ' ') : null);
 
+export type Urgency = 'Overdue' | '≤ 7 days' | '8–30 days' | '> 30 days';
+
+const urgencyOf = (daysLeft: number | null): Urgency | null => {
+  if (daysLeft === null) return null;
+  if (daysLeft < 0) return 'Overdue';
+  if (daysLeft <= 7) return '≤ 7 days';
+  if (daysLeft <= 30) return '8–30 days';
+  return '> 30 days';
+};
+
 function disputeRow(d: Dispute, asOf: Date) {
   const due = d.sellerResponseDueDate;
+  // Whole days left, rounded down so a deadline never looks further away than it is.
+  const daysToRespond = due ? Math.floor((Date.parse(due) - asOf.getTime()) / DAY_MS) : null;
+  // What PayPal took from the seller, kept apart from the disputed amount.
+  const hold = d.moneyMovements.find((m) => m.reason === 'HOLD_PLACED')?.amount ?? null;
   return {
     id: d.id,
     source: d.sourceMode,
@@ -23,7 +37,12 @@ function disputeRow(d: Dispute, asOf: Date) {
     createdAt: d.createdAt,
     updatedAt: d.updatedAt,
     sellerResponseDueDate: due,
-    daysToRespond: due ? Math.ceil((Date.parse(due) - asOf.getTime()) / DAY_MS) : null,
+    daysToRespond,
+    urgency: urgencyOf(daysToRespond),
+    evidenceRequested: d.evidenceRequested.join(', '),
+    evidenceRequestedCount: d.evidenceRequested.length,
+    heldCurrency: hold?.currencyCode ?? null,
+    heldAmount: hold ? Number(hold.value) : null,
   };
 }
 
