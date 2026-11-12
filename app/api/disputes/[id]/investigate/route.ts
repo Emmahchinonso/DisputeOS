@@ -44,7 +44,9 @@ Rules:
 - merchant:notes is merchant supplied and unverified. If it is listed, add one verified fact per merchant claim, worded
   "Merchant states (unverified): ..." and citing merchant:notes, and list what would verify it.
 - Do not estimate a probability of winning.
-- The draft response is to PayPal from the seller, factual and polite, and only claims what the sources support.`;
+- The draft response is to PayPal from the seller, factual and polite, and only claims what the sources support.
+- Recommended actions that involve responding or uploading evidence must say to do it in PayPal (the Resolution Center).
+  DisputeOS never sends anything, so never say to respond or upload "in DisputeOS".`;
 
 type Investigation = {
   summary: string;
