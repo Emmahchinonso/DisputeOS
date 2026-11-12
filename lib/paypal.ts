@@ -1,5 +1,5 @@
 // PayPal REST client: every call this demo makes to PayPal goes through here. It covers
-// catalog products, billing plans, invoicing, Transaction Search and balances, with plain
+// catalog products, billing plans, invoicing, Transaction Search, balances and disputes, with plain
 // fetch and no SDK. Server-side only: it reads the client secret from the environment.
 
 const BASE_URL = 'https://api-m.sandbox.paypal.com';
@@ -220,4 +220,63 @@ export type Balances = {
 
 export function getBalances(): Promise<Balances> {
   return get<Balances>('/v1/reporting/balances');
+}
+
+// --- Disputes -----------------------------------------------------------------------
+
+export type Link = { href: string; rel: string; method?: string };
+
+// Only the fields DisputeOS reads; the detail response carries more.
+export type PayPalDispute = {
+  dispute_id: string;
+  create_time?: string;
+  update_time?: string;
+  reason?: string;
+  status?: string;
+  dispute_state?: string;
+  dispute_life_cycle_stage?: string;
+  dispute_channel?: string;
+  dispute_amount?: Money;
+  seller_response_due_date?: string;
+  buyer_response_due_date?: string;
+  disputed_transactions?: {
+    seller_transaction_id?: string;
+    buyer_transaction_id?: string;
+    create_time?: string;
+    transaction_status?: string;
+    gross_amount?: Money;
+    invoice_number?: string;
+    custom?: string;
+    seller?: { merchant_id?: string; name?: string };
+    items?: { item_id?: string; item_description?: string; item_quantity?: string }[];
+  }[];
+  money_movements?: {
+    affected_party?: string;
+    amount?: Money;
+    initiated_time?: string;
+    type?: string;
+    reason?: string;
+  }[];
+  messages?: { posted_by?: string; time_posted?: string; content?: string }[];
+  evidences?: { evidence_type?: string; date?: string; source?: string; notes?: string }[];
+  supporting_info?: { notes?: string; source?: string; provided_time?: string }[];
+  allowed_response_options?: Record<string, unknown>;
+  links?: Link[];
+};
+
+// The list returns summaries and pages by a `next` link, not `total_pages`, so listAll() doesn't fit.
+export async function listDisputes(): Promise<PayPalDispute[]> {
+  const items: PayPalDispute[] = [];
+  let path: string | undefined = '/v1/customer/disputes?page_size=50';
+  while (path) {
+    const res: { items?: PayPalDispute[]; links?: Link[] } = await get(path);
+    items.push(...(res.items ?? []));
+    const next = res.links?.find((l) => l.rel === 'next')?.href;
+    path = next ? next.replace(BASE_URL, '') : undefined;
+  }
+  return items;
+}
+
+export function getDispute(id: string): Promise<PayPalDispute> {
+  return get<PayPalDispute>(`/v1/customer/disputes/${encodeURIComponent(id)}`);
 }
