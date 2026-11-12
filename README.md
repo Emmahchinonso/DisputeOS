@@ -1,32 +1,65 @@
-> [!TIP]
-> **PayPal AI Hackathon**
-> 
-> Win part of $69,750 in total prizes
-> 
-> Build What's Next with PayPal and AI is a global online hackathon inviting developers, designers, founders, students, and builders to create something new using PayPal and AI.
-> 
-> There are no prescribed problem statements and no set of tracks. Build an agent, an app, an automation, a new payment experience, a business tool, a social product, or something we haven't thought of yet.
-> 
-> https://paypalaihackathon.devpost.com
+# DisputeOS
 
-# PayPal SDK data pages
+DisputeOS is AI-assisted triage for PayPal disputes, built on AG Studio. It reads a merchant's open disputes from the PayPal REST API, shows which ones need a response soonest and what evidence PayPal is still waiting for, and lets the merchant ask an AI assistant about them in plain language.
 
-A Next.js app that reads PayPal sandbox data over the [PayPal REST API](https://developer.paypal.com/api/rest/) and shows it two ways:
+## What we built
 
-- **Endpoint pages**: one [AG Grid](https://www.ag-grid.com/react-data-grid/) per PayPal endpoint the demo calls, showing what each returns.
-- **Dashboard** (`/dashboard`): an [AG Studio](https://www.ag-grid.com/studio/) report over all of that data, joined together, which you can edit and save in the browser.
+The base is the PayPal + AG Grid hackathon starter, [paypaldev/hackathon-paypal-ag-grid-boilerplate](https://github.com/paypaldev/hackathon-paypal-ag-grid-boilerplate). On top of it we added:
 
-## Run locally
+- **Disputes client** ([`lib/paypal.ts`](lib/paypal.ts)): `listDisputes()` (`GET /v1/customer/disputes`, following `next` links) and `getDispute(id)` (`GET /v1/customer/disputes/{id}`), reusing the starter's OAuth token cache and retries.
+- **Normalized `Dispute` model** ([`lib/disputes/normalize.ts`](lib/disputes/normalize.ts)): DisputeOS's own shape for a dispute. Money stays as exact decimal strings. The disputed amount is kept separate from what PayPal actually moved (for example USD 10.00 disputed vs a USD 9.16 hold). It also carries the evidence PayPal requested from the seller, messages, allowed responses and the seller deadline. Buyer identity is not copied.
+- **Dispute dashboard** (`/dashboard`): the starter's invoice and revenue report replaced by a dispute queue, with one row per dispute and the nearest seller deadline first.
+- **"Response deadlines" widget** ([`app/dashboard/studio/deadlines-widget.tsx`](app/dashboard/studio/deadlines-widget.tsx)): a custom AG Studio widget with a card per open dispute. Each card shows days left, coloured by urgency, plus the amount and the requested evidence marked "Not yet provided". It appears in Studio's widget menu and on the default report.
+- **Read-only agent tool** `find_disputes_needing_action` ([`app/dashboard/studio/ai.ts`](app/dashboard/studio/ai.ts)): added to AG Studio's built-in lead agent alongside Studio's own tools. It lists open disputes by deadline, optionally filtered by days left or evidence type. It cannot change anything.
+- **Dispute prompt starters**, for example *"Which disputes need action soonest and what evidence is missing?"*
 
-Requires Node.js 20.9 or later and a PayPal sandbox REST app ([developer.paypal.com](https://developer.paypal.com/dashboard/applications/sandbox)). The transactions and balances pages also need the app's **Transaction search** feature enabled.
+## Setup
+
+You need:
+
+- Node.js 20.9 or later
+- a PayPal sandbox **Business** REST app (client ID and secret) from [developer.paypal.com](https://developer.paypal.com/dashboard/applications/sandbox)
+- an OpenAI API key **with credit**, for the assistant
 
 ```bash
+cp env.example .env.local   # fill in PAYPAL_CLIENT_ID, PAYPAL_SECRET, AG_STUDIO_OPENAI_API_KEY
 npm install
-cp env.example .env.local   # then fill in the values
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000). Next.js only loads the dotted `.env.local`; it is git-ignored, so credentials stay out of the repo.
+Open [http://localhost:3000](http://localhost:3000); `/` goes straight to the dashboard. `.env.local` is git-ignored.
+
+## How to get a dispute to see
+
+A new sandbox account has no disputes, so the dashboard starts empty. To create one:
+
+1. Log in to [sandbox.paypal.com](https://www.sandbox.paypal.com) as your sandbox **Personal** (buyer) account.
+2. Pay your sandbox **Business** account (the one your REST app belongs to).
+3. As the buyer, open a dispute on that payment from the sandbox Resolution Center.
+4. The disputes API takes a while to show a new dispute. Use the refresh button on the dashboard until it appears.
+
+Creating disputes through the API returned 403 for us, so DisputeOS doesn't use it.
+
+## What's real and what isn't
+
+- **Real:** dispute list and detail are live calls to the PayPal sandbox REST API on every page load.
+- **Read-only:** nothing is sent, refunded, accepted or submitted to PayPal. The agent tool only reads.
+- **Not fetched:** documents attached to messages or evidence are not downloaded.
+
+## Known limits
+
+- One merchant: the sandbox REST app's own disputes.
+- No saved drafts or case history. Studio reports are saved only in the browser's localStorage.
+- The Response deadlines widget reads all disputes and does not follow Studio's page or cross filters.
+- The AI proxy (`/api/ai/responses`) has no auth or rate limiting. Don't deploy it publicly with a real key.
+
+## License
+
+MIT, see [LICENSE](LICENSE).
+
+---
+
+## Technical notes (from the starter, updated)
 
 Other scripts: `npm run build` (production build), `npm run start` (serve the build), `npm run lint`.
 
@@ -34,38 +67,43 @@ Other scripts: `npm run build` (production build), `npm run start` (serve the bu
 
 Set `AG_STUDIO` in `.env.local` to your AG Studio licence key. The dashboard passes it to `AgStudioProvider`.
 
-### AI assistant (optional)
+### AI assistant
 
-The AG Studio dashboard at `/dashboard` has an AI assistant backed by OpenAI. The key is taken from the first of these that is set; with neither, the assistant is hidden:
+The key is taken from the first of these that is set. With neither, the assistant is hidden:
 
-1. `AG_STUDIO_OPENAI_API_KEY`, specific to this app. Put it in `.env.local` to choose the key for this demo.
-2. `OPENAI_API_KEY`, the name OpenAI's own tools use. If you already export one (e.g. in `~/.zshrc`), the demo uses it with no setup, and spends against it.
+1. `AG_STUDIO_OPENAI_API_KEY`, specific to this app.
+2. `OPENAI_API_KEY`, if you already export one, in which case the demo spends against it.
 
-A separate name is needed because Next.js prefers variables already in the environment over `.env.local`, so a globally exported `OPENAI_API_KEY` can't be overridden per project. The server logs which variable it used (never the key) the first time the assistant is configured.
+A separate name is needed because Next.js prefers variables already in the environment over `.env.local`. The server logs which variable it used (never the key).
 
-`OPENAI_MODELS` lists the model ids the assistant may use, comma-separated, first one the default (`gpt-5.4-mini` when unset); with two or more, the chat offers a model picker.
+`OPENAI_MODELS` lists the model ids the assistant may use, comma-separated, with the first as the default (`gpt-5.4-mini` when unset).
 
-The key never reaches the browser. Studio's adapter ([`openai-adapter.ts`](app/dashboard/studio/openai-adapter.ts), copied from the AG Studio docs) runs client-side and posts to this app's own [`/api/ai/responses`](app/api/ai/responses/route.ts), which adds the key, only allows the configured models, caps output tokens, and streams OpenAI's reply back.
+The key never reaches the browser. Studio's adapter ([`openai-adapter.ts`](app/dashboard/studio/openai-adapter.ts)) runs client-side and posts to this app's own [`/api/ai/responses`](app/api/ai/responses/route.ts). That route adds the key, allows only the configured models, caps output tokens, and streams OpenAI's reply back.
 
-In production `.env.local` isn't deployed: set the variable in your host's environment (e.g. Vercel project settings, `docker run --env-file`, or a secrets manager), as with the PayPal credentials. The route has no auth or rate limiting, so don't deploy it publicly with a real key without adding one.
-
-## How it works
+### How it works
 
 ```
-lib/paypal.ts            Every PayPal call: OAuth token, paging, retries, response types
-lib/dashboard-data.ts    Turns those responses into the dashboard's related tables
-app/(endpoints)/         One page per endpoint, each rendering an AG Grid
-app/dashboard/           The AG Studio dashboard
-app/api/ai/responses/    Server-side proxy for the dashboard's AI assistant
+lib/paypal.ts               Every PayPal call: OAuth token, paging, retries, response types
+lib/disputes/normalize.ts   PayPal dispute -> DisputeOS Dispute
+lib/dashboard-data.ts       Disputes -> one dashboard row each (urgency, held amount, requested evidence)
+app/dashboard/              The AG Studio dashboard, custom widget and AI assistant
+app/api/ai/responses/       Server-side proxy for the AI assistant
+app/(endpoints)/            The starter's per-endpoint AG Grid pages (products, plans, invoices, ...)
 ```
 
-[`lib/paypal.ts`](lib/paypal.ts) calls the REST API with plain `fetch`, no SDK. It gets an OAuth access token with the client-credentials grant and caches it until just before it expires. It follows `page`/`total_pages` paging, and retries on 401, 429 and 5xx responses. Its types are hand-written for the fields this demo reads, in the API's own snake_case.
+[`lib/paypal.ts`](lib/paypal.ts) calls the REST API with plain `fetch`, no SDK. It gets an OAuth access token with the client-credentials grant and caches it until just before it expires, and it retries on 401, 429 and 5xx responses.
 
-Every page is a server component that calls `await connection()`, so it renders per request with live data instead of being prerendered at build time. PayPal credentials never leave the server.
+Every page is a server component that calls `await connection()`, so it renders per request with live data. PayPal credentials never leave the server.
 
-## Endpoint pages
+Things worth knowing about the disputes API, found against a live sandbox dispute:
 
-Each page in [`app/(endpoints)`](app/(endpoints)) calls one function in `lib/paypal.ts`, maps the response to flat rows, and passes them with plain column definitions to the shared [`DataGrid`](app/(endpoints)/data-grid.tsx). The page header shows the REST calls behind it.
+- The list returns summaries. Money movements, messages and evidence come only from the detail call, so the dashboard fetches each dispute in full.
+- The hold PayPal places on the seller is in `fund_movements[]` (with `party`), not the documented `money_movements[]`.
+- There is no dedicated "evidence requested" field. It is an `evidences[]` entry with `source: "REQUESTED_FROM_SELLER"`, for example `PROOF_OF_FULFILLMENT`.
+
+### Endpoint pages
+
+The starter's endpoint pages are still there. Each calls one function in `lib/paypal.ts` and shows the response in an AG Grid.
 
 | Page | `lib/paypal.ts` function | REST calls |
 |---|---|---|
@@ -74,18 +112,3 @@ Each page in [`app/(endpoints)`](app/(endpoints)) calls one function in `lib/pay
 | [`/invoices`](app/(endpoints)/invoices/page.tsx) | `listInvoices()` | `GET /v2/invoicing/invoices`, then `GET /v2/invoicing/invoices/{id}` per invoice |
 | [`/transactions`](app/(endpoints)/transactions/page.tsx) | `searchTransactions(start, end)` | `GET /v1/reporting/transactions` |
 | [`/balances`](app/(endpoints)/balances/page.tsx) | `getBalances()` | `GET /v1/reporting/balances` |
-
-Things worth knowing about these endpoints:
-
-- **List endpoints return summaries.** Products have no type or category, plans no billing cycles, and invoices no line items, payments or refunds. So each record is fetched again in full, which is why these pages take a second or two.
-- **Billing plans keep their price in `billing_cycles`.** There is an optional `TRIAL` cycle, then the `REGULAR` cycle; `total_cycles: 0` means it bills until cancelled.
-- **Transaction Search covers at most 31 days per request** and rejects fractional seconds in dates. New activity can take up to three hours to appear. `fields=all` adds `payer_info` to each `transaction_info`. Event codes are [PayPal T-codes](https://developer.paypal.com/docs/transaction-search/transaction-event-codes/) (`T0001` = payout); status is `S` success, `P` pending, `D` denied, `V` reversed or `F` partially refunded.
-- **Amounts are decimal strings with a currency**, e.g. `{ "value": "2.99", "currency_code": "USD" }`. `amountOf()` turns them into numbers, and the grid formats money columns in each row's currency.
-
-### The grid
-
-Pages are server components, so the column definitions they pass to the grid must be plain data, with no functions. Money columns use the `type: 'money'` column type, defined in `data-grid.tsx`, which formats the value in the row's `currency`. Date columns use AG Grid's built-in `cellDataType: 'dateString'` or `'dateTimeString'`. Every column can be sorted and filtered, and the search box filters across all columns.
-
-## Dashboard
-
-[`/dashboard`](app/dashboard/page.tsx) fetches all five endpoints at once. [`lib/dashboard-data.ts`](lib/dashboard-data.ts) turns them into related tables: customers, invoices, invoice line items, invoice payments, products, plans, transactions, payouts and balances. AG Studio's data sources, relationships, theme, default report and AI assistant are configured in [`app/dashboard/studio`](app/dashboard/studio). Reports you create or edit are saved in the browser's localStorage.
