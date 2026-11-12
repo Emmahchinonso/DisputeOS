@@ -42,9 +42,9 @@ export type Dispute = {
   disputeAmount: Money | null;
   moneyMovements: MoneyMovement[];
   transactions: DisputedTransaction[];
-  // TODO: confirm the field PayPal uses for evidence requested from the seller on a live case.
+  // Evidence types PayPal asked the seller for, e.g. PROOF_OF_FULFILLMENT.
   evidenceRequested: string[];
-  evidenceSubmitted: { type: string | null; date: string | null; notes: string | null }[];
+  evidenceSubmitted: { type: string | null; source: string | null; date: string | null; notes: string | null }[];
   messages: DisputeMessage[];
   // Keys are the actions PayPal allows now (e.g. accept_claim); values are PayPal's option lists.
   allowedResponseOptions: Record<string, unknown>;
@@ -55,6 +55,7 @@ const money = (m?: PayPalMoney | null): Money | null =>
   m?.value === undefined ? null : { currencyCode: m.currency_code, value: m.value };
 
 export function fromPayPal(d: PayPalDispute): Dispute {
+  const requested = (e: { source?: string }) => e.source === 'REQUESTED_FROM_SELLER';
   return {
     id: d.dispute_id,
     sourceMode: 'paypal_sandbox',
@@ -67,8 +68,8 @@ export function fromPayPal(d: PayPalDispute): Dispute {
     sellerResponseDueDate: d.seller_response_due_date ?? null,
     buyerResponseDueDate: d.buyer_response_due_date ?? null,
     disputeAmount: money(d.dispute_amount),
-    moneyMovements: (d.money_movements ?? []).map((m) => ({
-      affectedParty: m.affected_party ?? null,
+    moneyMovements: (d.fund_movements ?? []).map((m) => ({
+      affectedParty: m.party ?? null,
       type: m.type ?? null,
       reason: m.reason ?? null,
       amount: money(m.amount),
@@ -87,9 +88,10 @@ export function fromPayPal(d: PayPalDispute): Dispute {
         quantity: i.item_quantity ?? null,
       })),
     })),
-    evidenceRequested: [],
-    evidenceSubmitted: (d.evidences ?? []).map((e) => ({
+    evidenceRequested: (d.evidences ?? []).filter(requested).flatMap((e) => (e.evidence_type ? [e.evidence_type] : [])),
+    evidenceSubmitted: (d.evidences ?? []).filter((e) => !requested(e)).map((e) => ({
       type: e.evidence_type ?? null,
+      source: e.source ?? null,
       date: e.date ?? null,
       notes: e.notes ?? null,
     })),

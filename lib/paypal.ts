@@ -250,15 +250,23 @@ export type PayPalDispute = {
     seller?: { merchant_id?: string; name?: string };
     items?: { item_id?: string; item_description?: string; item_quantity?: string }[];
   }[];
-  money_movements?: {
-    affected_party?: string;
+  // The sandbox sends fund_movements/party, not the documented money_movements/affected_party.
+  fund_movements?: {
+    party?: string;
     amount?: Money;
     initiated_time?: string;
     type?: string;
     reason?: string;
   }[];
   messages?: { posted_by?: string; time_posted?: string; content?: string }[];
-  evidences?: { evidence_type?: string; date?: string; source?: string; notes?: string }[];
+  // source is SUBMITTED_BY_BUYER, SUBMITTED_BY_SELLER or REQUESTED_FROM_SELLER.
+  evidences?: {
+    evidence_type?: string;
+    date?: string;
+    source?: string;
+    notes?: string;
+    dispute_life_cycle_stage?: string;
+  }[];
   supporting_info?: { notes?: string; source?: string; provided_time?: string }[];
   allowed_response_options?: Record<string, unknown>;
   links?: Link[];
