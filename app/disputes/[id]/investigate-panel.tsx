@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { Button } from '@/app/dashboard/components/ui/ui';
 
 // Merchant notes in, a cited investigation and an editable draft out. Nothing here is saved or sent.
@@ -34,7 +34,8 @@ export function InvestigatePanel({ disputeId }: { disputeId: string }) {
   const [failure, setFailure] = useState<string | null>(null);
   const [result, setResult] = useState<Result | null>(null);
   const [draft, setDraft] = useState('');
-  const [copied, setCopied] = useState(false);
+  const [copyState, setCopyState] = useState<'idle' | 'copied' | 'failed'>('idle');
+  const draftRef = useRef<HTMLTextAreaElement>(null);
 
   const investigate = async () => {
     setLoading(true);
@@ -56,10 +57,18 @@ export function InvestigatePanel({ disputeId }: { disputeId: string }) {
     }
   };
 
+  // Clipboard API first; select-and-copy for browsers that block it.
   const copy = async () => {
-    await navigator.clipboard.writeText(draft);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+    let ok = false;
+    try {
+      await navigator.clipboard.writeText(draft);
+      ok = true;
+    } catch {
+      draftRef.current?.select();
+      ok = document.execCommand('copy');
+    }
+    setCopyState(ok ? 'copied' : 'failed');
+    setTimeout(() => setCopyState('idle'), 2500);
   };
 
   const labelOf = (id: string) => result?.sources.find((s) => s.id === id)?.label ?? id;
@@ -138,6 +147,7 @@ export function InvestigatePanel({ disputeId }: { disputeId: string }) {
           <div>
             <h3 className="text-sm font-semibold uppercase tracking-wider text-pp-muted">Draft response</h3>
             <textarea
+              ref={draftRef}
               value={draft}
               onChange={(e) => setDraft(e.target.value)}
               rows={10}
@@ -145,9 +155,13 @@ export function InvestigatePanel({ disputeId }: { disputeId: string }) {
             />
             <div className="mt-2 flex items-center gap-3">
               <Button size="sm" onClick={copy}>
-                {copied ? 'Copied' : 'Copy'}
+                {copyState === 'copied' ? 'Copied' : 'Copy'}
               </Button>
-              <span className="text-sm text-pp-muted">Draft is not saved and nothing is sent to PayPal.</span>
+              {copyState === 'failed' ? (
+                <span className="text-sm text-pp-danger">Copy failed — select the text and copy it.</span>
+              ) : (
+                <span className="text-sm text-pp-muted">Draft is not saved and nothing is sent to PayPal.</span>
+              )}
             </div>
           </div>
         </div>
