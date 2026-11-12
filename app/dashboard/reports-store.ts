@@ -19,7 +19,7 @@ export type SavedReport = {
 export type StoredReports = { reports: SavedReport[]; activeId: string };
 
 // New key: reports saved by the starter reference tables that no longer exist.
-const STORAGE_KEY = 'disputeos:reports:v1';
+const STORAGE_KEY = 'disputeos:reports:v2';
 
 export const BUILT_IN_ID = 'dispute-queue';
 

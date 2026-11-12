@@ -18,7 +18,7 @@ import {
   type AgStudioApi,
   type AgStudioMode,
 } from 'ag-studio';
-import { AgStudio, AgStudioProvider } from 'ag-studio-react';
+import { AgStudio, AgStudioProvider, createWidgets } from 'ag-studio-react';
 import type { DashboardData } from '@/lib/dashboard-data';
 import { AppShell } from './components/app-shell';
 import {
@@ -47,12 +47,20 @@ import { DashboardSkeleton } from './components/skeleton';
 import * as reportState from './report-state';
 import { buildAi } from './studio/ai';
 import { buildStudioData, hasData } from './studio/data';
+import { DEADLINES_WIDGET, deadlinesWidget, type DisputeRegistry, type StudioContext } from './studio/deadlines-widget';
 import { agStudioPayPalTheme } from './studio/theme';
 import { useReports } from './use-reports';
 
 if (process.env.NODE_ENV !== 'production') {
   enableStudioDevValidations();
 }
+
+// Studio's own widgets plus ours, which gets its own group in the widget menu.
+const widgets = (defaults: { menu: { label: string; widgetIds: readonly string[] }[] }) =>
+  createWidgets<DisputeRegistry>({
+    additionalTypes: [deadlinesWidget],
+    menu: [{ label: 'Disputes', widgetIds: [DEADLINES_WIDGET] }, ...(defaults.menu as never[])],
+  });
 
 type DashboardProps = {
   data: DashboardData;
@@ -96,8 +104,9 @@ function ReportsDashboard({ data, licenseKey, aiModels }: DashboardProps) {
   const [initialState] = useState(() => reportState.withFiltersPanelFor('view', saved.state));
   const state = studioState ?? initialState;
   const studioData = useMemo(() => buildStudioData(data), [data]);
+  const context = useMemo<StudioContext>(() => ({ disputes: data.disputes }), [data]);
   // `ai` is read once, when Studio is created.
-  const ai = useMemo(() => (aiModels?.length ? buildAi(aiModels) : undefined), [aiModels]);
+  const ai = useMemo(() => (aiModels?.length ? buildAi(aiModels, data.disputes) : undefined), [aiModels, data]);
 
   // --- Driving Studio ---------------------------------------------------------------
   const load = (
@@ -263,6 +272,8 @@ function ReportsDashboard({ data, licenseKey, aiModels }: DashboardProps) {
               theme={agStudioPayPalTheme}
               layout={{ widgetBorderEnabled: true }}
               data={studioData}
+              widgets={widgets as never}
+              context={context}
               ai={ai}
               initialState={initialState}
               mode={mode}

@@ -34,9 +34,15 @@ const queue: AgPageState = {
       sort: [{ field: { id: 'disputes.daysToRespond' }, direction: 'asc' }],
       format: title('Dispute queue, nearest seller deadline first'),
     },
+    // Custom widget from ./deadlines-widget.tsx; it reads Studio's context, so it maps no fields.
+    'response-deadlines': {
+      type: 'response-deadlines',
+      format: title('Response deadlines'),
+    } as unknown as NonNullable<AgPageState['widgets']>[string],
   },
   widgetLayout: {
-    'dispute-queue': at(0, 0, 24, 24),
+    'response-deadlines': at(0, 0, 24, 14),
+    'dispute-queue': at(0, 14, 24, 20),
   },
 };
 
